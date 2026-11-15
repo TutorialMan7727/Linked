@@ -8,6 +8,7 @@ import uk.vrtxx.linked.command.LinkedCommand;
 import uk.vrtxx.linked.command.LinkedCommand.LinkFeature;
 import uk.vrtxx.linked.config.LinkSettings;
 import uk.vrtxx.linked.death.DeathLinkListener;
+import uk.vrtxx.linked.health.HealthLinkListener;
 import uk.vrtxx.linked.inventory.InventoryLinkListener;
 import uk.vrtxx.linked.inventory.SharedInventory;
 
@@ -15,6 +16,7 @@ public final class Linked extends JavaPlugin {
 
   private SharedInventory sharedInventory;
   private LinkSettings linkSettings;
+  private HealthLinkListener healthLinkListener;
 
   @Override
   public void onEnable() {
@@ -33,12 +35,15 @@ public final class Linked extends JavaPlugin {
       sharedInventory.capture(firstPlayer);
     }
 
+    healthLinkListener = new HealthLinkListener(this);
+
     getServer()
         .getPluginManager()
         .registerEvents(new InventoryLinkListener(this, sharedInventory, linkSettings), this);
     getServer()
         .getPluginManager()
         .registerEvents(new DeathLinkListener(this, sharedInventory, linkSettings), this);
+    getServer().getPluginManager().registerEvents(healthLinkListener, this);
     LinkedCommand linkedCommand = new LinkedCommand(this);
     Objects.requireNonNull(getCommand("linked"), "Missing linked command definition")
         .setExecutor(linkedCommand);
@@ -48,9 +53,12 @@ public final class Linked extends JavaPlugin {
     if (linkSettings.isInventoryLinkEnabled()) {
       sharedInventory.syncAllPlayers();
     }
+    if (linkSettings.isHealthLinkEnabled()) {
+      healthLinkListener.syncAll();
+    }
     Bukkit.getScheduler().runTaskTimer(this, sharedInventory::save, 6000L, 6000L);
 
-    getLogger().info("Linked enabled: shared inventory and death link are active.");
+    getLogger().info("Linked enabled: shared inventory, health link and death link are active.");
   }
 
   @Override
@@ -65,6 +73,7 @@ public final class Linked extends JavaPlugin {
   public boolean isFeatureEnabled(LinkFeature feature) {
     return switch (feature) {
       case INVENTORY -> linkSettings.isInventoryLinkEnabled();
+      case HEALTH -> linkSettings.isHealthLinkEnabled();
       case DEATH -> linkSettings.isDeathLinkEnabled();
     };
   }
@@ -77,6 +86,12 @@ public final class Linked extends JavaPlugin {
           sharedInventory.syncAllPlayers();
         }
       }
+      case HEALTH -> {
+        linkSettings.setHealthLinkEnabled(enabled);
+        if (enabled) {
+          healthLinkListener.syncAll();
+        }
+      }
       case DEATH -> linkSettings.setDeathLinkEnabled(enabled);
     }
   }
@@ -85,6 +100,9 @@ public final class Linked extends JavaPlugin {
     linkSettings.reload();
     if (linkSettings.isInventoryLinkEnabled()) {
       sharedInventory.syncAllPlayers();
+    }
+    if (linkSettings.isHealthLinkEnabled()) {
+      healthLinkListener.syncAll();
     }
   }
 }

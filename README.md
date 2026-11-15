@@ -1,12 +1,13 @@
 # Linked
 
-Linked is a Paper plugin that lets a group share one inventory and optionally share one fate: if one player dies, everyone dies.
+Linked is a Paper plugin that lets a group share one inventory, one health state, and optionally one fate: if one player dies, everyone dies.
 
 ## Features
 
 - **Inventory link** — every online player uses the same hotbar, storage, armour, and off-hand items.
+- **Health link** — damage, healing, hunger, saturation, and exhaustion changes are synchronized across online players.
 - **Death link** — when one online player dies, every other alive online player dies too.
-- **Persistent settings** — inventory and death linking can be turned on or off independently and remain configured after a restart.
+- **Persistent settings** — inventory, health, and death linking can be turned on or off independently and remain configured after a restart.
 
 ## Installation
 
@@ -25,6 +26,9 @@ These commands require operator permission by default (`linked.admin`).
 | `/linked inventory enable` | Turn shared inventory on. |
 | `/linked inventory disable` | Turn shared inventory off. |
 | `/linked inventory status` | Show whether shared inventory is on. |
+| `/linked health enable` | Turn health link on. |
+| `/linked health disable` | Turn health link off. |
+| `/linked health status` | Show whether health link is on. |
 | `/linked death enable` | Turn death link on. |
 | `/linked death disable` | Turn death link off. |
 | `/linked death status` | Show whether death link is on. |
@@ -38,6 +42,9 @@ These commands require operator permission by default (`linked.admin`).
 
 ```yml
 inventory-link:
+  enabled: true
+
+health-link:
   enabled: true
 
 death-link:
