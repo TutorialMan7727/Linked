@@ -5,5 +5,8 @@ inventory-link:
 health-link:
   enabled: true
 
+effect-link:
+  enabled: true
+
 death-link:
   enabled: true

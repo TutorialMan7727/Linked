@@ -7,6 +7,7 @@ public final class LinkSettings {
 
   private static final String INVENTORY_LINK_ENABLED = "inventory-link.enabled";
   private static final String HEALTH_LINK_ENABLED = "health-link.enabled";
+  private static final String EFFECT_LINK_ENABLED = "effect-link.enabled";
   private static final String DEATH_LINK_ENABLED = "death-link.enabled";
 
   private final JavaPlugin plugin;
@@ -24,6 +25,10 @@ public final class LinkSettings {
     return plugin.getConfig().getBoolean(HEALTH_LINK_ENABLED, true);
   }
 
+  public boolean isEffectLinkEnabled() {
+    return plugin.getConfig().getBoolean(EFFECT_LINK_ENABLED, true);
+  }
+
   public boolean isDeathLinkEnabled() {
     return plugin.getConfig().getBoolean(DEATH_LINK_ENABLED, true);
   }
@@ -34,6 +39,10 @@ public final class LinkSettings {
 
   public void setHealthLinkEnabled(boolean enabled) {
     setEnabled(HEALTH_LINK_ENABLED, enabled);
+  }
+
+  public void setEffectLinkEnabled(boolean enabled) {
+    setEnabled(EFFECT_LINK_ENABLED, enabled);
   }
 
   public void setDeathLinkEnabled(boolean enabled) {

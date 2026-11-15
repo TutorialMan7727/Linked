@@ -6,8 +6,8 @@ author: TutorialMan7727
 description: A global linking plugin
 commands:
   linked:
-    description: Manage inventory, health, and death linking.
-    usage: /linked <inventory|health|death> <enable|disable|status>
+    description: Manage inventory, health, effect, and death linking.
+    usage: /linked <inventory|health|effect|death> <enable|disable|status>
     aliases: [link]
     permission: linked.admin
 permissions:

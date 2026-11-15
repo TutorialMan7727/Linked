@@ -60,7 +60,8 @@ public final class LinkedCommand implements CommandExecutor, TabCompleter {
   public List<String> onTabComplete(
       CommandSender sender, Command command, String alias, String[] arguments) {
     if (arguments.length == 1) {
-      return partialMatches(arguments[0], List.of("inventory", "health", "death", "reload"));
+      return partialMatches(
+          arguments[0], List.of("inventory", "health", "effect", "death", "reload"));
     }
     if (arguments.length == 2 && LinkFeature.from(arguments[0]) != null) {
       return partialMatches(arguments[1], ACTIONS);
@@ -79,7 +80,7 @@ public final class LinkedCommand implements CommandExecutor, TabCompleter {
   private void sendUsage(CommandSender sender) {
     sender.sendMessage(
         Component.text(
-            "Usage: /linked <inventory|health|death> <enable|disable|status>",
+            "Usage: /linked <inventory|health|effect|death> <enable|disable|status>",
             NamedTextColor.YELLOW));
     sender.sendMessage(Component.text("Reload config: /linked reload", NamedTextColor.YELLOW));
   }
@@ -92,6 +93,7 @@ public final class LinkedCommand implements CommandExecutor, TabCompleter {
   public enum LinkFeature {
     INVENTORY("inventory"),
     HEALTH("health"),
+    EFFECT("effect"),
     DEATH("death");
 
     private final String displayName;
@@ -105,6 +107,7 @@ public final class LinkedCommand implements CommandExecutor, TabCompleter {
         case "inventory", "inv", "inventory-link" -> INVENTORY;
         case "death", "death-link" -> DEATH;
         case "health", "health-link" -> HEALTH;
+        case "effect", "effects", "effect-link" -> EFFECT;
         default -> null;
       };
     }
