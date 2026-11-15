@@ -5,7 +5,7 @@ Linked is a Paper plugin that lets a group share one inventory, health state, po
 ## Features
 
 - **Inventory link** — every online player uses the same hotbar, storage, armour, and off-hand items.
-- **Health link** — damage, healing, hunger, saturation, and exhaustion changes are synchronized across online players.
+- **Health link** — damage, healing, hunger, saturation, exhaustion, and experience changes are synchronized across online players.
 - **Effect link** — potion effects, including their removal, are synchronized across online players.
 - **Death link** — when one online player dies, every other alive online player dies too.
 - **Persistent settings** — inventory, health, effect, and death linking can be turned on or off independently and remain configured after a restart.

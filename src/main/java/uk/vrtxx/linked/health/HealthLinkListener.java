@@ -10,12 +10,14 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityRegainHealthEvent;
 import org.bukkit.event.entity.FoodLevelChangeEvent;
+import org.bukkit.event.player.PlayerExpChangeEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerLevelChangeEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import uk.vrtxx.linked.Linked;
 import uk.vrtxx.linked.command.LinkedCommand.LinkFeature;
 
-/** Keeps health, hunger, saturation, and exhaustion synchronized for online players. */
+/** Keeps health, hunger, exhaustion, and experience synchronized for online players. */
 public final class HealthLinkListener implements Listener {
 
   private final Linked plugin;
@@ -50,6 +52,16 @@ public final class HealthLinkListener implements Listener {
     if (event.getEntity() instanceof Player player) {
       scheduleSync(player);
     }
+  }
+
+  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+  public void onExperienceChange(PlayerExpChangeEvent event) {
+    scheduleSync(event.getPlayer());
+  }
+
+  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+  public void onLevelChange(PlayerLevelChangeEvent event) {
+    scheduleSync(event.getPlayer());
   }
 
   @EventHandler
@@ -165,6 +177,9 @@ public final class HealthLinkListener implements Listener {
     target.setFoodLevel(source.getFoodLevel());
     target.setSaturation(source.getSaturation());
     target.setExhaustion(source.getExhaustion());
+    target.setTotalExperience(source.getTotalExperience());
+    target.setLevel(source.getLevel());
+    target.setExp(source.getExp());
     if (target.getHealth() < previous) {
       target.playHurtAnimation(0f);
     }
