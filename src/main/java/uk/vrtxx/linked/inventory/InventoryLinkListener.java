@@ -8,12 +8,14 @@ import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityShootBowEvent;
+import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
@@ -151,6 +153,16 @@ public final class InventoryLinkListener implements Listener {
     Entity shooter = event.getEntity();
 
     if (shooter instanceof Player player) {
+      handleMutation(player);
+    }
+  }
+
+  /** Captures consumable projectiles such as pearls, throwable potions, and experience bottles. */
+  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+  public void onProjectileLaunch(ProjectileLaunchEvent event) {
+    Projectile projectile = event.getEntity();
+
+    if (projectile.getShooter() instanceof Player player) {
       handleMutation(player);
     }
   }
