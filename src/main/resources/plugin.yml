@@ -1,0 +1,16 @@
+name: Linked
+version: "${version}"
+main: uk.vrtxx.linked.Linked
+api-version: "${minecraftVersion}"
+author: TutorialMan7727
+description: A global linking plugin
+commands:
+  linked:
+    description: Manage inventory and death linking.
+    usage: /linked <inventory|death> <enable|disable|status>
+    aliases: [link]
+    permission: linked.admin
+permissions:
+  linked.admin:
+    description: Allows management of Linked features.
+    default: op

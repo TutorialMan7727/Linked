@@ -1,0 +1,6 @@
+# These values are updated by /linked and persist across server restarts.
+inventory-link:
+  enabled: true
+
+death-link:
+  enabled: true
