@@ -10,3 +10,12 @@ effect-link:
 
 death-link:
   enabled: true
+
+progress-link:
+  enabled: true
+
+respawn-link:
+  enabled: true
+
+insomnia-link:
+  enabled: true

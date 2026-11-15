@@ -12,6 +12,10 @@ import uk.vrtxx.linked.effect.EffectLinkListener;
 import uk.vrtxx.linked.health.HealthLinkListener;
 import uk.vrtxx.linked.inventory.InventoryLinkListener;
 import uk.vrtxx.linked.inventory.SharedInventory;
+import uk.vrtxx.linked.progress.ProgressLinkListener;
+import uk.vrtxx.linked.progress.SharedProgress;
+import uk.vrtxx.linked.respawn.SharedRespawnListener;
+import uk.vrtxx.linked.rest.InsomniaLinkListener;
 
 public final class Linked extends JavaPlugin {
 
@@ -19,6 +23,10 @@ public final class Linked extends JavaPlugin {
   private LinkSettings linkSettings;
   private EffectLinkListener effectLinkListener;
   private HealthLinkListener healthLinkListener;
+  private ProgressLinkListener progressLinkListener;
+  private SharedProgress sharedProgress;
+  private SharedRespawnListener sharedRespawnListener;
+  private InsomniaLinkListener insomniaLinkListener;
 
   @Override
   public void onEnable() {
@@ -31,6 +39,8 @@ public final class Linked extends JavaPlugin {
     linkSettings = new LinkSettings(this);
     sharedInventory = new SharedInventory(this);
     sharedInventory.load();
+    sharedProgress = new SharedProgress(this);
+    sharedProgress.load();
 
     if (!sharedInventory.isInitialized() && !Bukkit.getOnlinePlayers().isEmpty()) {
       Player firstPlayer = Bukkit.getOnlinePlayers().iterator().next();
@@ -39,6 +49,9 @@ public final class Linked extends JavaPlugin {
 
     healthLinkListener = new HealthLinkListener(this);
     effectLinkListener = new EffectLinkListener(this);
+    progressLinkListener = new ProgressLinkListener(this, sharedProgress);
+    sharedRespawnListener = new SharedRespawnListener(this);
+    insomniaLinkListener = new InsomniaLinkListener(this);
 
     getServer()
         .getPluginManager()
@@ -48,6 +61,9 @@ public final class Linked extends JavaPlugin {
         .registerEvents(new DeathLinkListener(this, sharedInventory, linkSettings), this);
     getServer().getPluginManager().registerEvents(healthLinkListener, this);
     getServer().getPluginManager().registerEvents(effectLinkListener, this);
+    getServer().getPluginManager().registerEvents(progressLinkListener, this);
+    getServer().getPluginManager().registerEvents(sharedRespawnListener, this);
+    getServer().getPluginManager().registerEvents(insomniaLinkListener, this);
     LinkedCommand linkedCommand = new LinkedCommand(this);
     Objects.requireNonNull(getCommand("linked"), "Missing linked command definition")
         .setExecutor(linkedCommand);
@@ -63,16 +79,29 @@ public final class Linked extends JavaPlugin {
     if (linkSettings.isEffectLinkEnabled()) {
       effectLinkListener.syncAll();
     }
+    if (linkSettings.isProgressLinkEnabled()) {
+      progressLinkListener.syncAll();
+    }
+    if (linkSettings.isRespawnLinkEnabled()) {
+      sharedRespawnListener.syncAll();
+    }
+    if (linkSettings.isInsomniaLinkEnabled()) {
+      insomniaLinkListener.syncAll();
+    }
     Bukkit.getScheduler().runTaskTimer(this, sharedInventory::save, 6000L, 6000L);
 
     getLogger()
-        .info("Linked enabled: shared inventory, health, effect, and death links are active.");
+        .info(
+            "Linked enabled: inventory, health, effects, death, progress, respawn, and insomnia links are active.");
   }
 
   @Override
   public void onDisable() {
     if (sharedInventory != null) {
       sharedInventory.save();
+    }
+    if (sharedProgress != null) {
+      sharedProgress.save();
     }
 
     getLogger().info("Linked disabled.");
@@ -84,6 +113,9 @@ public final class Linked extends JavaPlugin {
       case HEALTH -> linkSettings.isHealthLinkEnabled();
       case EFFECT -> linkSettings.isEffectLinkEnabled();
       case DEATH -> linkSettings.isDeathLinkEnabled();
+      case PROGRESS -> linkSettings.isProgressLinkEnabled();
+      case RESPAWN -> linkSettings.isRespawnLinkEnabled();
+      case INSOMNIA -> linkSettings.isInsomniaLinkEnabled();
     };
   }
 
@@ -108,6 +140,24 @@ public final class Linked extends JavaPlugin {
         }
       }
       case DEATH -> linkSettings.setDeathLinkEnabled(enabled);
+      case PROGRESS -> {
+        linkSettings.setProgressLinkEnabled(enabled);
+        if (enabled) {
+          progressLinkListener.syncAll();
+        }
+      }
+      case RESPAWN -> {
+        linkSettings.setRespawnLinkEnabled(enabled);
+        if (enabled) {
+          sharedRespawnListener.syncAll();
+        }
+      }
+      case INSOMNIA -> {
+        linkSettings.setInsomniaLinkEnabled(enabled);
+        if (enabled) {
+          insomniaLinkListener.syncAll();
+        }
+      }
     }
   }
 
@@ -121,6 +171,15 @@ public final class Linked extends JavaPlugin {
     }
     if (linkSettings.isEffectLinkEnabled()) {
       effectLinkListener.syncAll();
+    }
+    if (linkSettings.isProgressLinkEnabled()) {
+      progressLinkListener.syncAll();
+    }
+    if (linkSettings.isRespawnLinkEnabled()) {
+      sharedRespawnListener.syncAll();
+    }
+    if (linkSettings.isInsomniaLinkEnabled()) {
+      insomniaLinkListener.syncAll();
     }
   }
 }

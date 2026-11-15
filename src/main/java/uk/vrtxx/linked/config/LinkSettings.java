@@ -9,6 +9,9 @@ public final class LinkSettings {
   private static final String HEALTH_LINK_ENABLED = "health-link.enabled";
   private static final String EFFECT_LINK_ENABLED = "effect-link.enabled";
   private static final String DEATH_LINK_ENABLED = "death-link.enabled";
+  private static final String PROGRESS_LINK_ENABLED = "progress-link.enabled";
+  private static final String RESPAWN_LINK_ENABLED = "respawn-link.enabled";
+  private static final String INSOMNIA_LINK_ENABLED = "insomnia-link.enabled";
 
   private final JavaPlugin plugin;
 
@@ -33,6 +36,18 @@ public final class LinkSettings {
     return plugin.getConfig().getBoolean(DEATH_LINK_ENABLED, true);
   }
 
+  public boolean isProgressLinkEnabled() {
+    return plugin.getConfig().getBoolean(PROGRESS_LINK_ENABLED, true);
+  }
+
+  public boolean isRespawnLinkEnabled() {
+    return plugin.getConfig().getBoolean(RESPAWN_LINK_ENABLED, true);
+  }
+
+  public boolean isInsomniaLinkEnabled() {
+    return plugin.getConfig().getBoolean(INSOMNIA_LINK_ENABLED, true);
+  }
+
   public void setInventoryLinkEnabled(boolean enabled) {
     setEnabled(INVENTORY_LINK_ENABLED, enabled);
   }
@@ -47,6 +62,18 @@ public final class LinkSettings {
 
   public void setDeathLinkEnabled(boolean enabled) {
     setEnabled(DEATH_LINK_ENABLED, enabled);
+  }
+
+  public void setProgressLinkEnabled(boolean enabled) {
+    setEnabled(PROGRESS_LINK_ENABLED, enabled);
+  }
+
+  public void setRespawnLinkEnabled(boolean enabled) {
+    setEnabled(RESPAWN_LINK_ENABLED, enabled);
+  }
+
+  public void setInsomniaLinkEnabled(boolean enabled) {
+    setEnabled(INSOMNIA_LINK_ENABLED, enabled);
   }
 
   public void reload() {

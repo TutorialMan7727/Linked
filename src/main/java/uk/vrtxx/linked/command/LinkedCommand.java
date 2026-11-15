@@ -61,7 +61,16 @@ public final class LinkedCommand implements CommandExecutor, TabCompleter {
       CommandSender sender, Command command, String alias, String[] arguments) {
     if (arguments.length == 1) {
       return partialMatches(
-          arguments[0], List.of("inventory", "health", "effect", "death", "reload"));
+          arguments[0],
+          List.of(
+              "inventory",
+              "health",
+              "effect",
+              "death",
+              "progress",
+              "respawn",
+              "insomnia",
+              "reload"));
     }
     if (arguments.length == 2 && LinkFeature.from(arguments[0]) != null) {
       return partialMatches(arguments[1], ACTIONS);
@@ -80,7 +89,7 @@ public final class LinkedCommand implements CommandExecutor, TabCompleter {
   private void sendUsage(CommandSender sender) {
     sender.sendMessage(
         Component.text(
-            "Usage: /linked <inventory|health|effect|death> <enable|disable|status>",
+            "Usage: /linked <inventory|health|effect|death|progress|respawn|insomnia> <enable|disable|status>",
             NamedTextColor.YELLOW));
     sender.sendMessage(Component.text("Reload config: /linked reload", NamedTextColor.YELLOW));
   }
@@ -94,7 +103,10 @@ public final class LinkedCommand implements CommandExecutor, TabCompleter {
     INVENTORY("inventory"),
     HEALTH("health"),
     EFFECT("effect"),
-    DEATH("death");
+    DEATH("death"),
+    PROGRESS("progress"),
+    RESPAWN("respawn"),
+    INSOMNIA("insomnia");
 
     private final String displayName;
 
@@ -108,6 +120,9 @@ public final class LinkedCommand implements CommandExecutor, TabCompleter {
         case "death", "death-link" -> DEATH;
         case "health", "health-link" -> HEALTH;
         case "effect", "effects", "effect-link" -> EFFECT;
+        case "progress", "progress-link" -> PROGRESS;
+        case "respawn", "spawn", "respawn-link" -> RESPAWN;
+        case "insomnia", "rest", "insomnia-link" -> INSOMNIA;
         default -> null;
       };
     }

@@ -19,7 +19,9 @@ public final class SharedInventory {
 
   private static final int STORAGE_SIZE = 36;
   private static final int ARMOR_SIZE = 4;
-  private static final int FILE_MAGIC = 0x4C4E4B31; // LNK1
+  private static final int ENDER_CHEST_SIZE = 27;
+  private static final int FILE_MAGIC_V1 = 0x4C4E4B31; // LNK1
+  private static final int FILE_MAGIC = 0x4C4E4B32; // LNK2
   private static final int MAX_SECTION_BYTES = 16 * 1024 * 1024;
 
   private final JavaPlugin plugin;
@@ -28,6 +30,7 @@ public final class SharedInventory {
 
   private ItemStack[] storage = new ItemStack[STORAGE_SIZE];
   private ItemStack[] armor = new ItemStack[ARMOR_SIZE];
+  private ItemStack[] enderChest = new ItemStack[ENDER_CHEST_SIZE];
   private ItemStack offhand;
   private boolean initialized;
 
@@ -46,6 +49,7 @@ public final class SharedInventory {
     storage = cloneItems(inventory.getStorageContents());
     armor = cloneItems(inventory.getArmorContents());
     offhand = cloneItem(inventory.getItemInOffHand());
+    enderChest = cloneItems(player.getEnderChest().getContents());
     initialized = true;
   }
 
@@ -54,6 +58,7 @@ public final class SharedInventory {
     inventory.setStorageContents(cloneItems(storage));
     inventory.setArmorContents(cloneItems(armor));
     inventory.setItemInOffHand(cloneItem(offhand));
+    player.getEnderChest().setContents(cloneItems(enderChest));
   }
 
   public void syncAllPlayers() {
@@ -62,7 +67,9 @@ public final class SharedInventory {
     }
   }
 
-  /** Removes the shared items and immediately clears them from online players. */
+  /**
+   * Clears death-dropped shared equipment but preserves the shared Ender Chest, as vanilla does.
+   */
   public void clearAndSyncAllPlayers() {
     storage = new ItemStack[STORAGE_SIZE];
     armor = new ItemStack[ARMOR_SIZE];
@@ -78,6 +85,7 @@ public final class SharedInventory {
       writeItems(output, storage);
       writeItems(output, armor);
       writeItems(output, new ItemStack[] {offhand});
+      writeItems(output, enderChest);
     } catch (IOException exception) {
       plugin.getLogger().severe("Could not save shared inventory: " + exception.getMessage());
     }
@@ -97,23 +105,28 @@ public final class SharedInventory {
 
     try (DataInputStream input =
         new DataInputStream(new BufferedInputStream(new FileInputStream(inventoryFile)))) {
-      if (input.readInt() != FILE_MAGIC) {
+      int magic = input.readInt();
+      if (magic != FILE_MAGIC && magic != FILE_MAGIC_V1) {
         throw new IOException("Unrecognized shared inventory data.");
       }
 
       ItemStack[] loadedStorage = readItems(input);
       ItemStack[] loadedArmor = readItems(input);
       ItemStack[] loadedOffhand = readItems(input);
+      ItemStack[] loadedEnderChest =
+          magic == FILE_MAGIC ? readItems(input) : new ItemStack[ENDER_CHEST_SIZE];
 
       if (loadedStorage.length != STORAGE_SIZE
           || loadedArmor.length != ARMOR_SIZE
-          || loadedOffhand.length != 1) {
+          || loadedOffhand.length != 1
+          || loadedEnderChest.length != ENDER_CHEST_SIZE) {
         throw new IOException("Invalid shared inventory data.");
       }
 
       storage = cloneItems(loadedStorage);
       armor = cloneItems(loadedArmor);
       offhand = cloneItem(loadedOffhand[0]);
+      enderChest = cloneItems(loadedEnderChest);
       initialized = true;
       plugin.getLogger().info("Shared inventory loaded successfully.");
     } catch (IOException exception) {

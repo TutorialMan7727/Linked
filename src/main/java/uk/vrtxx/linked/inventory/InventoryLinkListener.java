@@ -2,7 +2,9 @@ package uk.vrtxx.linked.inventory;
 
 import com.destroystokyo.paper.event.player.PlayerArmorChangeEvent;
 import io.papermc.paper.event.entity.EntityLoadCrossbowEvent;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.bukkit.Bukkit;
@@ -17,6 +19,7 @@ import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityShootBowEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
@@ -24,8 +27,12 @@ import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
+import org.bukkit.inventory.CraftingInventory;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import uk.vrtxx.linked.config.LinkSettings;
 
@@ -74,6 +81,22 @@ public final class InventoryLinkListener implements Listener {
                 sharedInventory.syncAllPlayers();
               }
             });
+  }
+
+  /**
+   * A cursor item and crafting matrix do not belong to PlayerInventory. Move them into the shared
+   * inventory before Bukkit tears the view down, so a following sync cannot overwrite them.
+   */
+  @EventHandler(priority = EventPriority.MONITOR)
+  public void onInventoryClose(InventoryCloseEvent event) {
+    if (event.getPlayer() instanceof Player player) {
+      returnTransientItems(player, event.getInventory());
+    }
+  }
+
+  @EventHandler(priority = EventPriority.MONITOR)
+  public void onQuit(PlayerQuitEvent event) {
+    returnTransientItems(event.getPlayer(), event.getPlayer().getOpenInventory().getTopInventory());
   }
 
   @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -219,5 +242,44 @@ public final class InventoryLinkListener implements Listener {
         }
       }
     }
+  }
+
+  private void returnTransientItems(Player player, Inventory inventory) {
+    if (!linkSettings.isInventoryLinkEnabled()) {
+      return;
+    }
+
+    List<ItemStack> items = new ArrayList<>();
+    ItemStack cursor = player.getItemOnCursor();
+    if (hasItem(cursor)) {
+      items.add(cursor.clone());
+      player.setItemOnCursor(null);
+    }
+
+    if (inventory instanceof CraftingInventory craftingInventory) {
+      for (ItemStack item : craftingInventory.getMatrix()) {
+        if (hasItem(item)) {
+          items.add(item.clone());
+        }
+      }
+      craftingInventory.setMatrix(new ItemStack[craftingInventory.getMatrix().length]);
+    }
+
+    if (items.isEmpty()) {
+      return;
+    }
+
+    // Return items to the source inventory first, then make that resulting inventory authoritative.
+    // A full shared inventory drops only the genuine overflow once, rather than voiding it.
+    for (ItemStack item : player.getInventory().addItem(items.toArray(ItemStack[]::new)).values()) {
+      player.getWorld().dropItemNaturally(player.getLocation(), item);
+    }
+    sharedInventory.capture(player);
+    pendingPlayers.remove(player.getUniqueId());
+    sharedInventory.syncAllPlayers();
+  }
+
+  private static boolean hasItem(ItemStack item) {
+    return item != null && !item.getType().isAir() && item.getAmount() > 0;
   }
 }
