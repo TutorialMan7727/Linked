@@ -1,10 +1,12 @@
 package uk.vrtxx.linked.inventory;
 
+import io.papermc.paper.event.entity.EntityLoadCrossbowEvent;
+import java.util.LinkedHashSet;
+import java.util.Set;
+import java.util.UUID;
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.event.Cancellable;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -16,7 +18,6 @@ import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -31,7 +32,9 @@ public final class InventoryLinkListener implements Listener {
   private final JavaPlugin plugin;
   private final SharedInventory sharedInventory;
   private final LinkSettings linkSettings;
-  private boolean mutationPending;
+
+  private final Set<UUID> pendingPlayers = new LinkedHashSet<>();
+  private boolean syncScheduled;
 
   public InventoryLinkListener(
       JavaPlugin plugin, SharedInventory sharedInventory, LinkSettings linkSettings) {
@@ -49,9 +52,11 @@ public final class InventoryLinkListener implements Listener {
               if (!linkSettings.isInventoryLinkEnabled()) {
                 return;
               }
+
               if (!sharedInventory.isInitialized()) {
                 sharedInventory.capture(event.getPlayer());
               }
+
               sharedInventory.syncAllPlayers();
             });
   }
@@ -68,105 +73,133 @@ public final class InventoryLinkListener implements Listener {
             });
   }
 
-  @EventHandler(priority = EventPriority.HIGHEST)
+  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
   public void onInventoryClick(InventoryClickEvent event) {
     if (event.getWhoClicked() instanceof Player player) {
-      handleMutation(player, event);
+      handleMutation(player);
     }
   }
 
-  @EventHandler(priority = EventPriority.HIGHEST)
+  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
   public void onInventoryDrag(InventoryDragEvent event) {
     if (event.getWhoClicked() instanceof Player player) {
-      handleMutation(player, event);
+      handleMutation(player);
     }
   }
 
-  @EventHandler(priority = EventPriority.HIGHEST)
+  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
   public void onPickup(EntityPickupItemEvent event) {
     if (event.getEntity() instanceof Player player) {
-      handleMutation(player, event);
+      handleMutation(player);
     }
   }
 
-  @EventHandler(priority = EventPriority.HIGHEST)
+  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
   public void onDrop(PlayerDropItemEvent event) {
-    handleMutation(event.getPlayer(), event);
+    handleMutation(event.getPlayer());
   }
 
-  @EventHandler(priority = EventPriority.HIGHEST)
+  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
   public void onConsume(PlayerItemConsumeEvent event) {
-    handleMutation(event.getPlayer(), event);
+    handleMutation(event.getPlayer());
   }
 
-  @EventHandler(priority = EventPriority.HIGHEST)
+  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
   public void onItemDamage(PlayerItemDamageEvent event) {
-    handleMutation(event.getPlayer(), event);
+    handleMutation(event.getPlayer());
   }
 
-  @EventHandler(priority = EventPriority.HIGHEST)
+  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
   public void onSwap(PlayerSwapHandItemsEvent event) {
-    handleMutation(event.getPlayer(), event);
+    handleMutation(event.getPlayer());
   }
 
-  @EventHandler(priority = EventPriority.HIGHEST)
+  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
   public void onBlockPlace(BlockPlaceEvent event) {
-    handleMutation(event.getPlayer(), event);
+    handleMutation(event.getPlayer());
   }
 
-  @EventHandler(priority = EventPriority.HIGHEST)
+  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
   public void onBucketEmpty(PlayerBucketEmptyEvent event) {
-    handleMutation(event.getPlayer(), event);
+    handleMutation(event.getPlayer());
   }
 
-  @EventHandler(priority = EventPriority.HIGHEST)
+  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
   public void onBucketFill(PlayerBucketFillEvent event) {
-    handleMutation(event.getPlayer(), event);
+    handleMutation(event.getPlayer());
   }
 
-  @EventHandler(priority = EventPriority.HIGHEST)
+  /** Called when a crossbow has finished loading its projectiles. */
+  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+  public void onCrossbowLoad(EntityLoadCrossbowEvent event) {
+    Entity entity = event.getEntity();
+
+    if (entity instanceof Player player) {
+      handleMutation(player);
+    }
+  }
+
+  /** Called when a bow or crossbow shoots a projectile. */
+  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
   public void onBowShoot(EntityShootBowEvent event) {
     Entity shooter = event.getEntity();
+
     if (shooter instanceof Player player) {
-      handleMutation(player, event);
+      handleMutation(player);
     }
   }
 
-  @EventHandler(priority = EventPriority.HIGHEST)
-  public void onCrossbowInteract(PlayerInteractEvent event) {
+  /**
+   * Queues inventory changes and captures them on the next tick. Events are never cancelled by this
+   * listener.
+   */
+  private void handleMutation(Player player) {
     if (!linkSettings.isInventoryLinkEnabled()) {
       return;
     }
 
-    Material type = event.getItem() != null ? event.getItem().getType() : null;
+    pendingPlayers.add(player.getUniqueId());
 
-    if (type != Material.CROSSBOW) {
+    if (syncScheduled) {
       return;
     }
 
-    handleMutation(event.getPlayer(), event);
+    syncScheduled = true;
+
+    Bukkit.getScheduler().runTask(plugin, this::processPendingMutations);
   }
 
-  private void handleMutation(Player player, Cancellable event) {
-    if (!linkSettings.isInventoryLinkEnabled()) {
-      return;
-    }
+  private void processPendingMutations() {
+    try {
+      if (!linkSettings.isInventoryLinkEnabled()) {
+        pendingPlayers.clear();
+        return;
+      }
 
-    if (mutationPending) {
-      event.setCancelled(true);
-      return;
-    }
+      // Capture every player before applying the shared inventory.
+      // This prevents one player's synchronization from overwriting
+      // another player's pending inventory changes.
+      for (UUID uuid : pendingPlayers) {
+        Player player = Bukkit.getPlayer(uuid);
 
-    mutationPending = true;
-    Bukkit.getScheduler()
-        .runTask(
-            plugin,
-            () -> {
-              if (player.isOnline()) {
-                sharedInventory.capture(player);
-              }
-              sharedInventory.syncAllPlayers();
-              mutationPending = false;
-            });
+        if (player != null && player.isOnline()) {
+          sharedInventory.capture(player);
+        }
+      }
+
+      pendingPlayers.clear();
+      sharedInventory.syncAllPlayers();
+    } finally {
+      syncScheduled = false;
+
+      // Schedule another pass if more changes arrived.
+      if (!pendingPlayers.isEmpty()) {
+        Player player = Bukkit.getPlayer(pendingPlayers.iterator().next());
+
+        if (player != null) {
+          handleMutation(player);
+        }
+      }
+    }
   }
 }
