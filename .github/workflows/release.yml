@@ -6,13 +6,17 @@ on:
       - "v*"
       - "[0-9]*"
 
-permissions:
-  contents: write
-
 jobs:
-  release:
-    name: Build and publish release
+  build:
+    name: Build release JAR
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+      minecraft-version: ${{ steps.minecraft.outputs.value }}
 
     steps:
       - name: Check out tagged source
@@ -33,27 +37,85 @@ jobs:
         shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
+
           if [[ ! "$VERSION" =~ ^[0-9]+(\.[0-9]+){1,2}([-.][0-9A-Za-z.-]+)?$ ]]; then
             echo "Release tags must be a version such as v1.2.3 or 1.2.3."
             exit 1
           fi
+
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Read Minecraft version
+        id: minecraft
+        shell: bash
+        run: |
+          VERSION=$(grep '^minecraftVersion=' gradle.properties | cut -d '=' -f2-)
+
+          if [[ -z "$VERSION" ]]; then
+            echo "Minecraft version is missing from gradle.properties."
+            exit 1
+          fi
+
           echo "value=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Build release JAR
         run: ./gradlew build --no-daemon -PpluginVersion="${{ steps.version.outputs.value }}"
 
-      - name: Upload release workflow artifact
+      - name: Upload release artifact
         uses: actions/upload-artifact@v6
         with:
           name: linked-${{ steps.version.outputs.value }}
           path: build/libs/linked-${{ steps.version.outputs.value }}.jar
           if-no-files-found: error
 
+  github-release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download release artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: linked-${{ needs.build.outputs.version }}
+          path: release
+
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: >-
           gh release create "${{ github.ref_name }}"
-          "build/libs/linked-${{ steps.version.outputs.value }}.jar"
-          --title "Linked ${{ steps.version.outputs.value }}"
+          "release/linked-${{ needs.build.outputs.version }}.jar"
+          --title "Linked ${{ needs.build.outputs.version }}"
           --generate-notes
+
+  modrinth:
+    name: Publish to Modrinth
+    needs: build
+    runs-on: ubuntu-latest
+    continue-on-error: true
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Download release artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: linked-${{ needs.build.outputs.version }}
+          path: release
+
+      - name: Publish to Modrinth
+        uses: cloudnode-pro/modrinth-publish@v2
+        with:
+          token: ${{ secrets.MODRINTH_TOKEN }}
+          project: ${{ vars.MODRINTH_ID }}
+          version: ${{ needs.build.outputs.version }}
+          name: Linked ${{ needs.build.outputs.version }}
+          loaders: paper
+          game-versions: ${{ needs.build.outputs.minecraft-version }}
+          files: release/linked-${{ needs.build.outputs.version }}.jar

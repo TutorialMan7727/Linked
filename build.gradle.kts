@@ -1,4 +1,3 @@
-
 plugins {
     java
     id("xyz.jpenilla.run-paper") version "3.1.0"
@@ -6,8 +5,12 @@ plugins {
 }
 
 group = "uk.vrtxx.linked"
-version = providers.gradleProperty("pluginVersion").orElse("1.0.0").get()
-val minecraftVersion = "26.3"
+
+version = providers.gradleProperty("pluginVersion")
+    .orElse("1.0.0")
+    .get()
+
+val minecraftVersion = providers.gradleProperty("minecraftVersion").get()
 
 repositories {
     mavenCentral()
@@ -15,7 +18,7 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:26.3.build.+")
+    compileOnly("io.papermc.paper:paper-api:$minecraftVersion.build.+")
 }
 
 java {
