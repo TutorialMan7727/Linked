@@ -1,6 +1,7 @@
 package uk.vrtxx.linked.inventory;
 
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
@@ -15,6 +16,7 @@ import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerItemConsumeEvent;
 import org.bukkit.event.player.PlayerItemDamageEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -128,6 +130,21 @@ public final class InventoryLinkListener implements Listener {
     if (shooter instanceof Player player) {
       handleMutation(player, event);
     }
+  }
+
+  @EventHandler(priority = EventPriority.HIGHEST)
+  public void onCrossbowInteract(PlayerInteractEvent event) {
+    if (!linkSettings.isInventoryLinkEnabled()) {
+      return;
+    }
+
+    Material type = event.getItem() != null ? event.getItem().getType() : null;
+
+    if (type != Material.CROSSBOW) {
+      return;
+    }
+
+    handleMutation(event.getPlayer(), event);
   }
 
   private void handleMutation(Player player, Cancellable event) {
