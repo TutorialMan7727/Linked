@@ -8,6 +8,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Set;
+import java.util.UUID;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -64,6 +66,17 @@ public final class SharedInventory {
   public void syncAllPlayers() {
     for (Player player : Bukkit.getOnlinePlayers()) {
       apply(player);
+    }
+  }
+
+  /**
+   * Applies the latest state without replacing inventories that are temporarily unsafe to touch.
+   */
+  public void syncAllPlayersExcept(Set<UUID> excludedPlayers) {
+    for (Player player : Bukkit.getOnlinePlayers()) {
+      if (!excludedPlayers.contains(player.getUniqueId())) {
+        apply(player);
+      }
     }
   }
 

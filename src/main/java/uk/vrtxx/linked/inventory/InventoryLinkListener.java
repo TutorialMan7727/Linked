@@ -14,6 +14,9 @@ import org.bukkit.entity.Projectile;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockDamageAbortEvent;
+import org.bukkit.event.block.BlockDamageEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.EntityShootBowEvent;
@@ -44,6 +47,8 @@ public final class InventoryLinkListener implements Listener {
   private final LinkSettings linkSettings;
 
   private final Set<UUID> pendingPlayers = new LinkedHashSet<>();
+  private final Set<UUID> miningPlayers = new LinkedHashSet<>();
+  private final Set<UUID> deferredSyncPlayers = new LinkedHashSet<>();
   private boolean syncScheduled;
 
   public InventoryLinkListener(
@@ -67,7 +72,7 @@ public final class InventoryLinkListener implements Listener {
                 sharedInventory.capture(event.getPlayer());
               }
 
-              sharedInventory.syncAllPlayers();
+              syncAllPlayersWithoutInterruptingMining();
             });
   }
 
@@ -78,7 +83,7 @@ public final class InventoryLinkListener implements Listener {
             plugin,
             () -> {
               if (linkSettings.isInventoryLinkEnabled()) {
-                sharedInventory.syncAllPlayers();
+                syncAllPlayersWithoutInterruptingMining();
               }
             });
   }
@@ -96,7 +101,35 @@ public final class InventoryLinkListener implements Listener {
 
   @EventHandler(priority = EventPriority.MONITOR)
   public void onQuit(PlayerQuitEvent event) {
+    miningPlayers.remove(event.getPlayer().getUniqueId());
+    deferredSyncPlayers.remove(event.getPlayer().getUniqueId());
     returnTransientItems(event.getPlayer(), event.getPlayer().getOpenInventory().getTopInventory());
+  }
+
+  /**
+   * Do not replace a player's held item while their client is rendering block-breaking progress.
+   */
+  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+  public void onBlockDamage(BlockDamageEvent event) {
+    if (!event.getInstaBreak()) {
+      miningPlayers.add(event.getPlayer().getUniqueId());
+    }
+  }
+
+  @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+  public void onBlockBreak(BlockBreakEvent event) {
+    UUID uuid = event.getPlayer().getUniqueId();
+    miningPlayers.remove(uuid);
+    // The just-finished miner is the authoritative source for their tool damage and new drops.
+    deferredSyncPlayers.remove(uuid);
+    handleMutation(event.getPlayer());
+  }
+
+  @EventHandler(priority = EventPriority.MONITOR)
+  public void onBlockDamageAbort(BlockDamageAbortEvent event) {
+    Player player = event.getPlayer();
+    miningPlayers.remove(player.getUniqueId());
+    syncDeferredPlayer(player);
   }
 
   @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -229,7 +262,7 @@ public final class InventoryLinkListener implements Listener {
       }
 
       pendingPlayers.clear();
-      sharedInventory.syncAllPlayers();
+      syncAllPlayersWithoutInterruptingMining();
     } finally {
       syncScheduled = false;
 
@@ -276,10 +309,33 @@ public final class InventoryLinkListener implements Listener {
     }
     sharedInventory.capture(player);
     pendingPlayers.remove(player.getUniqueId());
-    sharedInventory.syncAllPlayers();
+    syncAllPlayersWithoutInterruptingMining();
   }
 
   private static boolean hasItem(ItemStack item) {
     return item != null && !item.getType().isAir() && item.getAmount() > 0;
+  }
+
+  private void syncAllPlayersWithoutInterruptingMining() {
+    deferredSyncPlayers.addAll(miningPlayers);
+    sharedInventory.syncAllPlayersExcept(miningPlayers);
+  }
+
+  private void syncDeferredPlayer(Player player) {
+    if (!deferredSyncPlayers.contains(player.getUniqueId())) {
+      return;
+    }
+    Bukkit.getScheduler()
+        .runTask(
+            plugin,
+            () -> {
+              UUID uuid = player.getUniqueId();
+              if (!player.isOnline() || miningPlayers.contains(uuid)) {
+                return;
+              }
+              if (deferredSyncPlayers.remove(uuid)) {
+                sharedInventory.apply(player);
+              }
+            });
   }
 }
