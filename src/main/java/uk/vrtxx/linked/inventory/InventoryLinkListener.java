@@ -1,5 +1,6 @@
 package uk.vrtxx.linked.inventory;
 
+import com.destroystokyo.paper.event.player.PlayerArmorChangeEvent;
 import io.papermc.paper.event.entity.EntityLoadCrossbowEvent;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -106,6 +107,11 @@ public final class InventoryLinkListener implements Listener {
 
   @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
   public void onItemDamage(PlayerItemDamageEvent event) {
+    handleMutation(event.getPlayer());
+  }
+
+  @EventHandler(priority = EventPriority.MONITOR)
+  public void onArmorChange(PlayerArmorChangeEvent event) {
     handleMutation(event.getPlayer());
   }
 
